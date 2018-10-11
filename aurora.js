@@ -16,6 +16,7 @@ function initScan() {
         tabs = {};
         list.forEach(tab => tabs[tab.id] = tab);
     });
+    
     browser.windows.getAll().then(list => {
         // If any windows are focused, set that window's ID as the focusedWindow
         let focused = windows.find(wnd => wnd.focused);
@@ -29,7 +30,7 @@ function setupListeners() {
     browser.windows.onFocusChanged.addListener(u(id => focusedWindow = id));
 
     // Add event listeners for when tabs created/focused/destroyed
-    browser.tabs.onActivated.addListener(u(setActiveTab(tabId, windowId));
+    browser.tabs.onActivated.addListener(u(setActiveTab(tabId, windowId)));
     browser.tabs.onAttached.addListener(u((id, info) => tabs[id].windowId = info.newWindowId));
     browser.tabs.onCreated.addListener(u(tab => tabs[tab.id] = tab));
     browser.tabs.onRemoved.addListener(u(id => delete tabs[id])); 
@@ -37,7 +38,7 @@ function setupListeners() {
 }
 
 /** Simple wrapper to prettify the listener functions.
- * Runs the given function then calls pushStateUpdate. */
+ * Runs a function that calls the given function then calls pushStateUpdate. */
 function u(fn) {
     return function() {
         fn.apply(null, arguments);
@@ -62,15 +63,23 @@ function pickTabProps(obj) {
 /** POSTs a state update to the Aurora endpoint. */
 function pushStateUpdate() {
     // TODO: send update to Aurora endpoint
-    console.clear();
-    console.log(JSON.stringify(generateStateObject(), null, 4));
+    fetch("http://localhost:9088/", {
+        method: "POST",
+        body: JSON.stringify(generateStateObject())
+    });
 }
 
 /** Generates the state object to send to Aurora. */
 function generateStateObject() {
     return {
-        focusedWindow,
-        tabs: Object.keys(tabs)
-            .map(tabId => pickTabProps(tabs[tabId]))
+        provider: {
+            name: "webbrowser",
+            appid: -1
+        },
+        browser: {
+            focusedWindow,
+            tabs: Object.keys(tabs)
+                .map(tabId => pickTabProps(tabs[tabId]))
+        }
     };
 }
