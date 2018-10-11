@@ -1,0 +1,19 @@
+{
+	"manifest_version": 2,
+	"name": "Aurora",
+	"version": "0.1",
+	"description": "// TODO",
+
+	"icons": {
+		"48": "icons/icon48.png"
+	},
+
+	"permissions": [
+		"<all_urls>",
+		"tabs"
+	],
+
+	"background": {
+		"scripts": ["aurora.js"]
+	}
+}
