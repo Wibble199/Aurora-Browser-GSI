@@ -1,19 +1,37 @@
 {
 	"manifest_version": 2,
-	"name": "Aurora",
+	"name": "Aurora GSI for Browsers",
+	"short_name": "Aurora",
 	"version": "0.1",
-	"description": "// TODO",
+	"description": "This extension is an Inter-Process-Communication tool for Aurora. Aurora is a lighting software for RGB keyboards and mice which supports many different brands.",
+	"homepage_url": "https://www.project-aurora.com/",
+	"developer": {
+		"name": "Will Bennion",
+		"url": "https://gitlab.com/wibble199"
+	},
+	"incognito": "spanning",
 
 	"icons": {
 		"48": "icons/icon48.png"
 	},
-
 	"permissions": [
 		"<all_urls>",
-		"tabs"
+		"tabs",
+		"storage"
 	],
 
 	"background": {
 		"scripts": ["aurora.js"]
+	},
+	"options_ui": {
+		"page": "options.html",
+		"browser_style": true,
+		"chrome_style": true
+	},
+
+	"applications": {
+		"gecko": {
+		  "id": "auroragsibrowser@project-aurora.com"
+		}
 	}
 }

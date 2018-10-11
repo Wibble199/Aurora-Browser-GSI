@@ -4,10 +4,19 @@ const desiredProperties = ["active", "attention", "audible", "pinned", "status",
 
 let tabs = {};
 let focusedWindow = -1;
+let settings = {};
 
+loadSettings();
 initScan();
 setupListeners();
 
+
+/** Fetches the app's settings from the storage API. */
+function loadSettings() {
+    browser.storage.local.get({
+        port: 9088
+    }).then(s => settings = s);
+}
 
 /** Perform an initial scan of tabs and windows */
 function initScan() {
@@ -30,7 +39,7 @@ function setupListeners() {
     browser.windows.onFocusChanged.addListener(u(id => focusedWindow = id));
 
     // Add event listeners for when tabs created/focused/destroyed
-    browser.tabs.onActivated.addListener(u(setActiveTab(tabId, windowId)));
+    browser.tabs.onActivated.addListener(u(setActiveTab));
     browser.tabs.onAttached.addListener(u((id, info) => tabs[id].windowId = info.newWindowId));
     browser.tabs.onCreated.addListener(u(tab => tabs[tab.id] = tab));
     browser.tabs.onRemoved.addListener(u(id => delete tabs[id])); 
@@ -63,7 +72,7 @@ function pickTabProps(obj) {
 /** POSTs a state update to the Aurora endpoint. */
 function pushStateUpdate() {
     // TODO: send update to Aurora endpoint
-    fetch("http://localhost:9088/", {
+    fetch(`http://localhost:${settings.port}/`, {
         method: "POST",
         body: JSON.stringify(generateStateObject())
     });
