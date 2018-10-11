@@ -26,22 +26,30 @@ function initScan() {
 /** Adds event listeners for window and tab APIs */
 function setupListeners() {
     // Add event listeners for when windows focused/blured
-    browser.windows.onFocusChanged.addListener(id => { focusedWindow = id; pushStateUpdate(); });
+    browser.windows.onFocusChanged.addListener(u(id => focusedWindow = id));
 
     // Add event listeners for when tabs created/focused/destroyed
-    browser.tabs.onUpdated.addListener(
-        (id, _, newState) => { tabs[id] = newState; pushStateUpdate(); },
-        { properties: ["audible", "pinned", "status", "title"] } // Only trigger when one of these is updated (else it triggers on things like shareState which we don't care about)
-    );
-    browser.tabs.onActivated.addListener(({tabId, windowId}) => {
-        Object.values(tabs) // For every tab
-            .filter(tab => tab.windowId == windowId) // In the window being updated
-            .forEach(tab => tab.active = tab.id == tabId) // Set tab's `active` to be true if it is the new active tab
+    browser.tabs.onActivated.addListener(u(setActiveTab(tabId, windowId));
+    browser.tabs.onAttached.addListener(u((id, info) => tabs[id].windowId = info.newWindowId));
+    browser.tabs.onCreated.addListener(u(tab => tabs[tab.id] = tab));
+    browser.tabs.onRemoved.addListener(u(id => delete tabs[id])); 
+    browser.tabs.onUpdated.addListener(u((id, _, newState) => tabs[id] = newState), { properties: ["audible", "pinned", "status", "title"] });   
+}
+
+/** Simple wrapper to prettify the listener functions.
+ * Runs the given function then calls pushStateUpdate. */
+function u(fn) {
+    return function() {
+        fn.apply(null, arguments);
         pushStateUpdate();
-    });
-    browser.tabs.onCreated.addListener(tab => { tabs[tab.id] = tab; pushStateUpdate(); });
-    browser.tabs.onRemoved.addListener(id => { delete tabs[id]; pushStateUpdate(); });
-    browser.tabs.onAttached.addListener((id, info) => { tabs[id].windowId = info.newWindowId; pushStateUpdate(); });
+    }
+}
+
+/** Sets the active tab for the given window. */
+function setActiveTab({tabId, windowId}) {
+    Object.values(tabs) // For every tab
+        .filter(tab => tab.windowId == windowId) // Only include target windowId since each window has an active tab
+        .forEach(tab => tab.active = tab.id == tabId) // Set tab's `active` to be true if it is the new active tab
 }
 
 /** Picks certain properties from an object, discarding the rest.  */
