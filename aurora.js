@@ -1,9 +1,15 @@
 /** The tab properties that Aurora actually cares about.
  * See https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/Tab for a description of these properties. */
-const desiredProperties = ["active", "attention", "audible", "pinned", "status", "title", "url", "windowId"];
+const desiredTabProperties = ["active", "attention", "audible", "pinned", "status", "title", "url", "windowId"];
+
+/** The download properties that Aurora cares about.
+ * See https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/downloads/DownloadItem */
+const desiredDownloadProperties = ["bytesReceived", "estimatedEndTime", "filename", "id", "paused", "startTime", "state", "totalBytes"];
 
 let tabs = {};
 let focusedWindow = -1;
+let downloads = [];
+let downloadUpdateIntervalId = -1;
 let settings = {};
 
 loadSettings();
@@ -31,6 +37,8 @@ function initScan() {
         let focused = windows.find(wnd => wnd.focused);
         focusedWindow = focused ? focused.id : -1;
     });
+
+    updateDownloadList();
 }
 
 /** Adds event listeners for window and tab APIs */
@@ -44,6 +52,10 @@ function setupListeners() {
     browser.tabs.onCreated.addListener(u(tab => tabs[tab.id] = tab));
     browser.tabs.onRemoved.addListener(u(id => delete tabs[id])); 
     browser.tabs.onUpdated.addListener(u((id, _, newState) => tabs[id] = newState), { properties: ["audible", "pinned", "status", "title"] });   
+
+    browser.downloads.onCreated.addListener(updateDownloadList);
+    browser.downloads.onChanged.addListener(updateDownloadList);
+    browser.downloads.onErased.addListener(updateDownloadList);
 }
 
 /** Simple wrapper to prettify the listener functions.
@@ -62,16 +74,48 @@ function setActiveTab({tabId, windowId}) {
         .forEach(tab => tab.active = tab.id == tabId) // Set tab's `active` to be true if it is the new active tab
 }
 
-/** Picks certain properties from an object, discarding the rest.  */
-function pickTabProps(obj) {
+/** Completely clears and updates the download list. */
+function updateDownloadList() {
+    browser.downloads.search({}).then(list => {
+        // Add downloads to the object by their ID
+        downloads = list;
+
+        // If atleast one download is running, periodically update the list
+        // This is required since `downloads.onChanged` doesn't fire for `bytesRecieved` update
+        if (list.some(dl => dl.state == "in_progress"))
+            startUpdatingDlList();
+        else
+            stopUpdatingDlList();
+
+        // After updating the list, push the new state.
+        pushStateUpdate();
+    });
+}
+
+/** Starts a periodic download list update if not already running. */
+function startUpdatingDlList() {
+    if (downloadUpdateIntervalId == -1)
+        downloadUpdateIntervalId = setInterval(updateDownloadList, 1000);
+}
+
+/** Stops the periodic download list update if it's running. */
+function stopUpdatingDlList() {
+    if (downloadUpdateIntervalId != -1) {
+        clearInterval(downloadUpdateIntervalId);
+        downloadUpdateIntervalId = -1;
+    }
+}
+
+/** Picks certain properties from an object, discarding the rest. 
+ * @param {string[]} props */
+function pick(obj, props) {
     let newObj =  {};
-    desiredProperties.forEach(prop => newObj[prop] = obj[prop]);
+    props.forEach(prop => newObj[prop] = obj[prop]);
     return newObj;
 }
 
 /** POSTs a state update to the Aurora endpoint. */
 function pushStateUpdate() {
-    // TODO: send update to Aurora endpoint
     fetch(`http://localhost:${settings.port}/`, {
         method: "POST",
         body: JSON.stringify(generateStateObject())
@@ -85,10 +129,12 @@ function generateStateObject() {
             name: "webbrowser",
             appid: -1
         },
-        browser: {
+        pages: {
             focusedWindow,
             tabs: Object.keys(tabs)
-                .map(tabId => pickTabProps(tabs[tabId]))
-        }
+                .map(tabId => pick(tabs[tabId], desiredTabProperties))
+        },
+        downloads: downloads
+            .map(dl => pick(dl, desiredDownloadProperties))
     };
 }

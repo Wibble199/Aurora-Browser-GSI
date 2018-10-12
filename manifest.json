@@ -17,7 +17,8 @@
 	"permissions": [
 		"<all_urls>",
 		"tabs",
-		"storage"
+		"storage",
+		"downloads"
 	],
 
 	"background": {
