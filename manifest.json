@@ -12,7 +12,9 @@
 	"incognito": "spanning",
 
 	"icons": {
-		"48": "icons/icon48.png"
+		"32": "icons/firefox/icon32.png",
+		"48": "icons/firefox/icon48.png",
+		"96": "icons/firefox/icon96.png"
 	},
 	"permissions": [
 		"<all_urls>",

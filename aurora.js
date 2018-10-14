@@ -126,7 +126,7 @@ function pushStateUpdate() {
 function generateStateObject() {
     return {
         provider: {
-            name: "webbrowser",
+            name: "firefox.exe",
             appid: -1
         },
         pages: {
