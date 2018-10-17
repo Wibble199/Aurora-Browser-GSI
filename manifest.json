@@ -23,18 +23,24 @@
 		"downloads"
 	],
 
-	"background": {
-		"scripts": ["aurora.js"]
-	},
 	"options_ui": {
 		"page": "options.html",
 		"browser_style": true,
 		"chrome_style": true
 	},
-
 	"applications": {
 		"gecko": {
 		  "id": "auroragsibrowser@project-aurora.com"
 		}
-	}
+	},
+
+	"background": {
+		"scripts": ["scripts/shared.js", "scripts/aurora-core.js"]
+	},
+	"content_scripts": [
+		{
+			"matches": ["<all_urls>"],
+			"js": ["scripts/shared.js", "scripts/aurora-media-detector.js"]
+		}
+	]
 }

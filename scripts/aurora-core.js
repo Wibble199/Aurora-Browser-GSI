@@ -1,6 +1,9 @@
+/* Main background script that handles aggregating the data and updating the Aurora endpoint with the new
+   data. Also responsible for watching changes in tabs and downloads. */
+   
 /** The tab properties that Aurora actually cares about.
  * See https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/Tab for a description of these properties. */
-const desiredTabProperties = ["active", "attention", "audible", "pinned", "status", "title", "url", "windowId"];
+const desiredTabProperties = ["active", "attention", "audible", "favIconUrl", "pinned", "status", "title", "url", "windowId"];
 
 /** The download properties that Aurora cares about.
  * See https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/downloads/DownloadItem */
@@ -8,6 +11,7 @@ const desiredDownloadProperties = ["bytesReceived", "estimatedEndTime", "filenam
 
 let tabs = {};
 let focusedWindow = -1;
+let videos = {};
 let downloads = [];
 let downloadUpdateIntervalId = -1;
 let settings = {};
@@ -50,12 +54,16 @@ function setupListeners() {
     browser.tabs.onActivated.addListener(u(setActiveTab));
     browser.tabs.onAttached.addListener(u((id, info) => tabs[id].windowId = info.newWindowId));
     browser.tabs.onCreated.addListener(u(tab => tabs[tab.id] = tab));
-    browser.tabs.onRemoved.addListener(u(id => delete tabs[id])); 
+    browser.tabs.onRemoved.addListener(u(id => { delete tabs[id]; delete videos[id] })); 
     browser.tabs.onUpdated.addListener(u((id, _, newState) => tabs[id] = newState), { properties: ["audible", "pinned", "status", "title"] });   
 
+    // Add listeners for downloads
     browser.downloads.onCreated.addListener(updateDownloadList);
     browser.downloads.onChanged.addListener(updateDownloadList);
     browser.downloads.onErased.addListener(updateDownloadList);
+
+    // Add listener for content script messages (e.g. media detection)
+    browser.runtime.onMessage.addListener(handleIncomingMessage)
 }
 
 /** Simple wrapper to prettify the listener functions.
@@ -106,12 +114,14 @@ function stopUpdatingDlList() {
     }
 }
 
-/** Picks certain properties from an object, discarding the rest. 
- * @param {string[]} props */
-function pick(obj, props) {
-    let newObj =  {};
-    props.forEach(prop => newObj[prop] = obj[prop]);
-    return newObj;
+/** Function that handles any incoming message from content scripts and updates the core state. */
+function handleIncomingMessage(data, sender, response) {
+    // If the content script is giving us video state data, update that relevant data
+    if (data.videoState)
+        videos[sender.tab.id] = data.videoState;
+
+    // After updating our core state, push it to Aurora
+    pushStateUpdate();
 }
 
 /** POSTs a state update to the Aurora endpoint. */
@@ -120,6 +130,9 @@ function pushStateUpdate() {
         method: "POST",
         body: JSON.stringify(generateStateObject())
     });
+
+    console.clear();
+    console.log(JSON.stringify(generateStateObject().pages.tabs.find(t => t.video), null, 4));
 }
 
 /** Generates the state object to send to Aurora. */
@@ -132,7 +145,11 @@ function generateStateObject() {
         pages: {
             focusedWindow,
             tabs: Object.keys(tabs)
-                .map(tabId => pick(tabs[tabId], desiredTabProperties))
+                .map(tabId => {
+                    let tabData = pick(tabs[tabId], desiredTabProperties);
+                    tabData.video = videos[tabId] || null;
+                    return tabData;
+                })
         },
         downloads: downloads
             .map(dl => pick(dl, desiredDownloadProperties))
