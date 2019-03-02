@@ -1,0 +1,40 @@
+{
+	"manifest_version": 2,
+	"name": "Aurora GSI for Chrome",
+	"short_name": "Aurora",
+	"version": "0.1",
+	"description": "This extension is an Inter-Process-Communication tool for Aurora. Aurora is a lighting software for RGB keyboards and mice which supports many different brands.",
+	"homepage_url": "https://www.project-aurora.com/",
+	"author": {
+		"name": "Will Bennion",
+		"url": "https://gitlab.com/wibble199"
+	},
+	"incognito": "spanning",
+
+	"icons": {
+		"32": "icons/chrome/icon32.png",
+		"48": "icons/chrome/icon48.png",
+		"96": "icons/chrome/icon96.png"
+	},
+	"permissions": [
+		"<all_urls>",
+		"tabs",
+		"storage",
+		"downloads"
+	],
+
+	"options_ui": {
+		"page": "options.html",
+		"chrome_style": true
+	},
+
+	"background": {
+		"scripts": ["scripts/polyfill.min.js", "scripts/shared.js", "scripts/aurora-core.js"]
+	},
+	"content_scripts": [
+		{
+			"matches": ["<all_urls>"],
+			"js": ["scripts/polyfill.min.js", "scripts/shared.js", "scripts/aurora-media-detector.js"]
+		}
+	]
+}

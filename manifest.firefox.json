@@ -1,6 +1,6 @@
 {
 	"manifest_version": 2,
-	"name": "Aurora GSI for Browsers",
+	"name": "Aurora GSI for Firefox",
 	"short_name": "Aurora",
 	"version": "0.1",
 	"description": "This extension is an Inter-Process-Communication tool for Aurora. Aurora is a lighting software for RGB keyboards and mice which supports many different brands.",

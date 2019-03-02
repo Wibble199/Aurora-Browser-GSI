@@ -20,7 +20,6 @@ loadSettings();
 initScan();
 setupListeners();
 
-
 /** Fetches the app's settings from the storage API. */
 function loadSettings() {
     browser.storage.local.get({
@@ -38,7 +37,7 @@ function initScan() {
     
     browser.windows.getAll().then(list => {
         // If any windows are focused, set that window's ID as the focusedWindow
-        let focused = windows.find(wnd => wnd.focused);
+        let focused = list.find(wnd => wnd.focused);
         focusedWindow = focused ? focused.id : -1;
     });
 
@@ -48,14 +47,14 @@ function initScan() {
 /** Adds event listeners for window and tab APIs */
 function setupListeners() {
     // Add event listeners for when windows focused/blured
-    browser.windows.onFocusChanged.addListener(u(id => focusedWindow = id));
+    browser.windows.onFocusChanged.addListener(u(id => {focusedWindow = id; console.log("Focussed window changed: " + id)}));
 
     // Add event listeners for when tabs created/focused/destroyed
     browser.tabs.onActivated.addListener(u(setActiveTab));
     browser.tabs.onAttached.addListener(u((id, info) => tabs[id].windowId = info.newWindowId));
     browser.tabs.onCreated.addListener(u(tab => tabs[tab.id] = tab));
     browser.tabs.onRemoved.addListener(u(id => { delete tabs[id]; delete videos[id] })); 
-    browser.tabs.onUpdated.addListener(u((id, _, newState) => tabs[id] = newState), { properties: ["audible", "pinned", "status", "title"] });   
+    browser.tabs.onUpdated.addListener(u((id, _, newState) => tabs[id] = newState)); // There was an event filter on here for { properties: ["audible", "pinned", "status", "title"] }, but Chrome does not support them here >:(
 
     // Add listeners for downloads
     browser.downloads.onCreated.addListener(updateDownloadList);
@@ -130,9 +129,6 @@ function pushStateUpdate() {
         method: "POST",
         body: JSON.stringify(generateStateObject())
     });
-
-    console.clear();
-    console.log(JSON.stringify(generateStateObject().pages.tabs.find(t => t.video), null, 4));
 }
 
 /** Generates the state object to send to Aurora. */
